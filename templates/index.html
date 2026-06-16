@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Interview Review Classifier</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface-2: #243044;
+      --text: #e7ecf3;
+      --muted: #9aa8bc;
+      --accent: #5b9fd4;
+      --accent-2: #7c6cf0;
+      --success: #3ecf8e;
+      --warning: #f0b429;
+      --danger: #f07178;
+      --border: rgba(255, 255, 255, 0.08);
+      --shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, Segoe UI, system-ui, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(91, 159, 212, 0.18), transparent 28%),
+        radial-gradient(circle at top right, rgba(124, 108, 240, 0.16), transparent 24%),
+        var(--bg);
+    }
+
+    .container {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 40px 20px 64px;
+    }
+
+    .hero {
+      margin-bottom: 28px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(2rem, 4vw, 2.8rem);
+      line-height: 1.1;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 720px;
+      line-height: 1.6;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 20px;
+    }
+
+    .card {
+      background: rgba(26, 35, 50, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      resize: vertical;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface-2);
+      color: var(--text);
+      padding: 16px;
+      font: inherit;
+      line-height: 1.5;
+    }
+
+    textarea:focus {
+      outline: 2px solid rgba(91, 159, 212, 0.45);
+      border-color: rgba(91, 159, 212, 0.6);
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 18px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+
+    .primary {
+      color: white;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    }
+
+    .secondary {
+      color: var(--text);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+    }
+
+    .categories {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .chip {
+      font-size: 0.85rem;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .result {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .result.visible { display: block; }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-weight: 700;
+      background: rgba(62, 207, 142, 0.14);
+      color: var(--success);
+      border: 1px solid rgba(62, 207, 142, 0.25);
+    }
+
+    .badge.warn {
+      background: rgba(240, 180, 41, 0.14);
+      color: var(--warning);
+      border-color: rgba(240, 180, 41, 0.25);
+    }
+
+    .metric {
+      font-size: 2rem;
+      font-weight: 800;
+      margin: 0;
+    }
+
+    .muted { color: var(--muted); }
+
+    .section-title {
+      margin: 18px 0 10px;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+
+    .reasoning {
+      line-height: 1.7;
+      color: #d7dee8;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+    }
+
+    .prob-list, .neighbor-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .prob-item, .neighbor-item {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .bar-track {
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    }
+
+    .neighbor-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+      font-size: 0.92rem;
+    }
+
+    .error {
+      display: none;
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      color: #ffd5d8;
+      background: rgba(240, 113, 120, 0.12);
+      border: 1px solid rgba(240, 113, 120, 0.25);
+    }
+
+    .error.visible { display: block; }
+
+    .loading {
+      display: none;
+      margin-top: 14px;
+      color: var(--muted);
+    }
+
+    .loading.visible { display: block; }
+
+    @media (max-width: 860px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="hero">
+      <h1>AI Interview Review Classifier</h1>
+      <p>
+        Paste a candidate review and get an instant category prediction with confidence,
+        nearest matching seed examples, and a plain-language explanation of why it was classified that way.
+      </p>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <label for="review">Review text</label>
+        <textarea id="review" placeholder="Example: The interview was lagging and the AI stopped responding halfway through."></textarea>
+        <div class="actions">
+          <button class="primary" id="classifyBtn">Classify Review</button>
+          <button class="secondary" id="sampleBtn">Try Sample</button>
+        </div>
+        <div class="loading" id="loading">Analyzing review...</div>
+        <div class="error" id="error"></div>
+      </section>
+
+      <aside class="card">
+        <h3 style="margin-top:0;">Supported categories</h3>
+        <p class="muted">The model uses {{ seed_count }} augmented seed reviews, distance-weighted KNN (k=5), and centroid fallback for uncertain cases.</p>
+        <div class="categories">
+          {% for category in categories %}
+            <span class="chip">{{ category.label }}</span>
+          {% endfor %}
+        </div>
+      </aside>
+    </div>
+
+    <section class="card result" id="result">
+      <div class="result-header">
+        <div>
+          <p class="muted" style="margin:0 0 6px;">Predicted category</p>
+          <h2 id="categoryLabel" style="margin:0;">-</h2>
+          <p class="muted" id="categoryDescription" style="margin:8px 0 0;"></p>
+          <p id="subcategoryLabel" style="margin:6px 0 0;font-size:0.9rem;color:var(--accent);font-weight:600;"></p>
+        </div>
+        <div style="text-align:right;">
+          <p class="metric" id="confidenceValue">-</p>
+          <p class="muted" style="margin:0;">confidence</p>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
+        <div id="reviewBadge" class="badge">Ready for automation</div>
+        <div id="methodBadge" class="badge" style="background:rgba(91,159,212,0.14);color:var(--accent);border-color:rgba(91,159,212,0.25);">-</div>
+      </div>
+
+      <h3 class="section-title">Why this classification?</h3>
+      <div class="reasoning" id="reasoning"></div>
+
+      <h3 class="section-title">KNN category probabilities</h3>
+      <div class="prob-list" id="probabilities"></div>
+
+      <h3 class="section-title">Category centroid similarity</h3>
+      <div class="prob-list" id="centroidScores"></div>
+
+      <h3 class="section-title">Nearest seed examples</h3>
+      <div class="neighbor-list" id="neighbors"></div>
+    </section>
+  </div>
+
+  <script>
+    const reviewInput = document.getElementById("review");
+    const classifyBtn = document.getElementById("classifyBtn");
+    const sampleBtn = document.getElementById("sampleBtn");
+    const result = document.getElementById("result");
+    const errorBox = document.getElementById("error");
+    const loading = document.getElementById("loading");
+
+    const samples = [
+      "The interview was lagging badly and I could not hear the AI clearly.",
+      "Questions kept repeating and the flow felt confusing.",
+      "Amazing experience, the AI interview felt very natural.",
+      "Interview stopped in the middle and the agent never replied again.",
+      "You should ask more technical questions related to the role.",
+      "AI should be more humanized because its very robotic."
+    ];
+
+    function showError(message) {
+      errorBox.textContent = message;
+      errorBox.classList.add("visible");
+    }
+
+    function clearError() {
+      errorBox.textContent = "";
+      errorBox.classList.remove("visible");
+    }
+
+    function renderProbabilities(probabilities, containerId) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = "";
+
+      Object.entries(probabilities).forEach(([label, value]) => {
+        const item = document.createElement("div");
+        item.className = "prob-item";
+        item.innerHTML = `
+          <div style="display:flex;justify-content:space-between;gap:12px;">
+            <strong>${label}</strong>
+            <span>${(value * 100).toFixed(1)}%</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:${Math.max(value * 100, 4)}%"></div>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function renderNeighbors(neighbors) {
+      const container = document.getElementById("neighbors");
+      container.innerHTML = "";
+
+      neighbors.forEach((neighbor) => {
+        const item = document.createElement("div");
+        item.className = "neighbor-item";
+        item.innerHTML = `
+          <div class="neighbor-meta">
+            <strong>${neighbor.category_label}</strong>
+            <span>${(neighbor.similarity * 100).toFixed(1)}% similar</span>
+          </div>
+          <div style="font-size:0.82rem;color:var(--accent);margin-bottom:4px;">${neighbor.subcategory_label || ''}</div>
+          <div class="muted">"${neighbor.text}"</div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    async function classifyReview() {
+      clearError();
+      const review = reviewInput.value.trim();
+      if (!review) {
+        showError("Please enter a review first.");
+        return;
+      }
+
+      loading.classList.add("visible");
+      classifyBtn.disabled = true;
+
+      try {
+        const response = await fetch("/classify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ review })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Classification failed.");
+        }
+
+        document.getElementById("categoryLabel").textContent = data.category_label;
+        document.getElementById("categoryDescription").textContent = data.category_description;
+        document.getElementById("subcategoryLabel").textContent = data.subcategory_label ? `Subcategory: ${data.subcategory_label}` : '';
+        document.getElementById("confidenceValue").textContent = `${(data.confidence * 100).toFixed(1)}%`;
+        document.getElementById("reasoning").textContent = data.reasoning;
+        renderProbabilities(data.probabilities, "probabilities");
+        if (data.centroid_similarities) {
+          renderProbabilities(data.centroid_similarities, "centroidScores");
+        }
+        renderNeighbors(data.nearest_neighbors);
+
+        const badge = document.getElementById("reviewBadge");
+        if (data.needs_human_review) {
+          badge.textContent = "Needs human review";
+          badge.classList.add("warn");
+        } else {
+          badge.textContent = "High-confidence prediction";
+          badge.classList.remove("warn");
+        }
+
+        document.getElementById("methodBadge").textContent = data.method_label || data.method;
+
+        result.classList.add("visible");
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        loading.classList.remove("visible");
+        classifyBtn.disabled = false;
+      }
+    }
+
+    classifyBtn.addEventListener("click", classifyReview);
+    sampleBtn.addEventListener("click", () => {
+      reviewInput.value = samples[Math.floor(Math.random() * samples.length)];
+    });
+    reviewInput.addEventListener("keydown", (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        classifyReview();
+      }
+    });
+  </script>
+</body>
+</html>
